@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import type {
+  PaymentMethod,
+  PaymentMethodUpsertInput,
   Subscription,
   SubscriptionCadence,
   SubscriptionStatus,
@@ -21,6 +23,9 @@ export const subscriptionStatusOptions: SubscriptionStatus[] = [
 ];
 
 const optionalDateField = z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.")]);
+const optionalLast4Field = z.string().trim().refine((value) => value === "" || /^\d{4}$/.test(value), {
+  message: "Use exactly 4 digits.",
+});
 const optionalNumberField = z
   .string()
   .trim()
@@ -74,6 +79,15 @@ export const subscriptionFormSchema = z
   });
 
 export type SubscriptionFormValues = z.infer<typeof subscriptionFormSchema>;
+
+export const paymentMethodFormSchema = z.object({
+  is_default: z.boolean(),
+  label: z.string().trim().min(2, "Label must be at least 2 characters."),
+  last4: optionalLast4Field,
+  provider: z.string().trim().min(2, "Provider must be at least 2 characters."),
+});
+
+export type PaymentMethodFormValues = z.infer<typeof paymentMethodFormSchema>;
 
 export function buildSubscriptionFormValues(subscription?: Subscription | null): SubscriptionFormValues {
   if (!subscription) {
@@ -140,5 +154,34 @@ export function toSubscriptionPayload(values: SubscriptionFormValues): Subscript
     status: values.status,
     vendor: values.vendor.trim(),
     website_url: values.website_url || undefined,
+  };
+}
+
+export function buildPaymentMethodFormValues(
+  paymentMethod?: PaymentMethod | null,
+): PaymentMethodFormValues {
+  if (!paymentMethod) {
+    return {
+      is_default: false,
+      label: "",
+      last4: "",
+      provider: "",
+    };
+  }
+
+  return {
+    is_default: paymentMethod.is_default,
+    label: paymentMethod.label,
+    last4: paymentMethod.last4 ?? "",
+    provider: paymentMethod.provider,
+  };
+}
+
+export function toPaymentMethodPayload(values: PaymentMethodFormValues): PaymentMethodUpsertInput {
+  return {
+    is_default: values.is_default,
+    label: values.label.trim(),
+    last4: values.last4 || null,
+    provider: values.provider.trim(),
   };
 }
