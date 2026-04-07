@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  paymentMethodFormSchema,
   subscriptionFormSchema,
+  toPaymentMethodPayload,
   toSubscriptionPayload,
 } from "@/lib/validators";
 
@@ -93,5 +95,33 @@ describe("subscription validators", () => {
     expect(result.error?.flatten().fieldErrors.end_date).toContain(
       "End date must be on or after the start date.",
     );
+  });
+
+  it("accepts a valid payment method payload and normalizes blank last four digits", () => {
+    const parsed = paymentMethodFormSchema.parse({
+      is_default: true,
+      label: " Household Visa ",
+      last4: "",
+      provider: " Visa ",
+    });
+
+    expect(toPaymentMethodPayload(parsed)).toEqual({
+      is_default: true,
+      label: "Household Visa",
+      last4: null,
+      provider: "Visa",
+    });
+  });
+
+  it("rejects invalid payment method last four digits", () => {
+    const result = paymentMethodFormSchema.safeParse({
+      is_default: false,
+      label: "Travel Card",
+      last4: "12A4",
+      provider: "Mastercard",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.flatten().fieldErrors.last4).toContain("Use exactly 4 digits.");
   });
 });
