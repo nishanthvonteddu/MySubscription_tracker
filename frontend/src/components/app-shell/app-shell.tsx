@@ -226,10 +226,10 @@ export function AppShell({ children }: AppShellProps) {
                 isSidebarExpanded ? "block" : "hidden xl:block",
               )}
             >
-              <p className="text-xs uppercase tracking-[0.3em] text-white/40">Day 5 status</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/40">Day 6 status</p>
               <p className="mt-3 text-sm leading-6 text-white/75">
-                Subscription management is live with manual entry, detail routes, and lifecycle
-                edits layered onto the shared shell.
+                Payment methods are now live with saved billing rails, default switching, and
+                catalog edits layered onto the shared shell.
               </p>
             </div>
           </div>
