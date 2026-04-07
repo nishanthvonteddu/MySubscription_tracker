@@ -124,4 +124,50 @@ describe("apiClient", () => {
       }),
     );
   });
+
+  it("posts payment method payloads with the bearer token", async () => {
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          created_at: new Date().toISOString(),
+          id: 3,
+          is_default: true,
+          label: "Household Visa",
+          last4: "4242",
+          provider: "Visa",
+          updated_at: new Date().toISOString(),
+          user_id: 1,
+        }),
+        {
+          status: 201,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    await apiClient.createPaymentMethod("access-token", {
+      is_default: true,
+      label: "Household Visa",
+      last4: "4242",
+      provider: "Visa",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/v1/payment-methods",
+      expect.objectContaining({
+        body: JSON.stringify({
+          is_default: true,
+          label: "Household Visa",
+          last4: "4242",
+          provider: "Visa",
+        }),
+        headers: expect.objectContaining({
+          Authorization: "Bearer access-token",
+        }),
+        method: "POST",
+      }),
+    );
+  });
 });
