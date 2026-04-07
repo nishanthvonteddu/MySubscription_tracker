@@ -60,6 +60,13 @@ export type PaymentMethodListResponse = {
   total: number;
 };
 
+export type PaymentMethodUpsertInput = {
+  is_default: boolean;
+  label: string;
+  last4: string | null;
+  provider: string;
+};
+
 export type SubscriptionStatus = "active" | "paused" | "cancelled";
 export type SubscriptionCadence = "weekly" | "monthly" | "quarterly" | "yearly";
 
