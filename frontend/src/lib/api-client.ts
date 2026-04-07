@@ -4,7 +4,9 @@ import type {
   CategoryListResponse,
   HealthResponse,
   LoginInput,
+  PaymentMethod,
   PaymentMethodListResponse,
+  PaymentMethodUpsertInput,
   RegisterInput,
   Subscription,
   SubscriptionFilters,
@@ -95,6 +97,27 @@ export const apiClient = {
   },
   getPaymentMethods(token: string) {
     return request<PaymentMethodListResponse>("/payment-methods", undefined, { token });
+  },
+  createPaymentMethod(token: string, payload: PaymentMethodUpsertInput) {
+    return request<PaymentMethod>("/payment-methods", {
+      body: JSON.stringify(payload),
+      method: "POST",
+    }, { token });
+  },
+  updatePaymentMethod(
+    token: string,
+    paymentMethodId: number,
+    payload: Partial<PaymentMethodUpsertInput>,
+  ) {
+    return request<PaymentMethod>(`/payment-methods/${paymentMethodId}`, {
+      body: JSON.stringify(payload),
+      method: "PATCH",
+    }, { token });
+  },
+  deletePaymentMethod(token: string, paymentMethodId: number) {
+    return request<void>(`/payment-methods/${paymentMethodId}`, {
+      method: "DELETE",
+    }, { token });
   },
   getSubscriptions(token: string, filters?: SubscriptionFilters) {
     return request<SubscriptionListResponse>("/subscriptions", undefined, {
