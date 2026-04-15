@@ -4,12 +4,57 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/hooks/use-auth";
 import { apiClient } from "@/lib/api-client";
-import type { Upload } from "@/types";
+import type { Upload, UploadListResponse } from "@/types";
 
 const uploadKeys = {
   history: ["uploads", "history"] as const,
   status: (uploadId: number) => ["uploads", "status", uploadId] as const,
 };
+
+function compareUploadsByRecency(left: Upload, right: Upload) {
+  const timestampDelta = new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+
+  if (timestampDelta !== 0) {
+    return timestampDelta;
+  }
+
+  return right.id - left.id;
+}
+
+export function upsertUploadInHistory(
+  current: UploadListResponse | undefined,
+  upload: Upload,
+): UploadListResponse {
+  const existingItems = current?.items ?? [];
+  const alreadyPresent = existingItems.some((item) => item.id === upload.id);
+  const items = [upload, ...existingItems.filter((item) => item.id !== upload.id)].sort(compareUploadsByRecency);
+
+  return {
+    items,
+    total: alreadyPresent ? current?.total ?? items.length : (current?.total ?? existingItems.length) + 1,
+  };
+}
+
+export function removeUploadFromHistory(
+  current: UploadListResponse | undefined,
+  uploadId: number,
+): UploadListResponse | undefined {
+  if (!current) {
+    return current;
+  }
+
+  const items = current.items.filter((item) => item.id !== uploadId);
+  const removedCount = current.items.length - items.length;
+
+  if (removedCount === 0) {
+    return current;
+  }
+
+  return {
+    items,
+    total: Math.max(0, current.total - removedCount),
+  };
+}
 
 function useRequiredToken() {
   const { accessToken } = useAuth();
@@ -41,10 +86,17 @@ export function useUploadHistory() {
 
 export function useUploadStatus(uploadId: number | null) {
   const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
 
   return useQuery({
     enabled: Boolean(accessToken) && uploadId !== null,
-    queryFn: () => apiClient.getUploadStatus(accessToken!, uploadId!),
+    queryFn: async () => {
+      const upload = await apiClient.getUploadStatus(accessToken!, uploadId!);
+      queryClient.setQueryData<UploadListResponse>(uploadKeys.history, (current) =>
+        upsertUploadInHistory(current, upload),
+      );
+      return upload;
+    },
     queryKey: uploadId === null ? ["uploads", "status", "idle"] : uploadKeys.status(uploadId),
     refetchIntervalInBackground: true,
     refetchOnMount: "always",
@@ -64,6 +116,9 @@ export function useCreateUpload() {
       apiClient.uploadFile(token, file, onProgress),
     onSuccess: (upload) => {
       queryClient.setQueryData(uploadKeys.status(upload.id), upload);
+      queryClient.setQueryData<UploadListResponse>(uploadKeys.history, (current) =>
+        upsertUploadInHistory(current, upload),
+      );
       void queryClient.invalidateQueries({ queryKey: uploadKeys.status(upload.id) });
       void queryClient.invalidateQueries({ queryKey: uploadKeys.history });
     },
@@ -77,6 +132,9 @@ export function useDeleteUpload() {
   return useMutation({
     mutationFn: (uploadId: number) => apiClient.deleteUpload(token, uploadId),
     onSuccess: (_, uploadId) => {
+      queryClient.setQueryData<UploadListResponse | undefined>(uploadKeys.history, (current) =>
+        removeUploadFromHistory(current, uploadId),
+      );
       void queryClient.invalidateQueries({ queryKey: uploadKeys.history });
       queryClient.removeQueries({ queryKey: uploadKeys.status(uploadId) });
     },

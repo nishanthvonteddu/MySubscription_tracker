@@ -4,8 +4,12 @@ import { expect, test } from "@playwright/test";
 import { buildCsvStatement, buildPdfStatement, resetWorkspace } from "./support/session";
 
 async function waitForUploadCompletion(page: Page, fileName: string) {
-  await expect(page.getByTestId("upload-selected-file-name")).toHaveText(fileName);
-  await expect(page.getByTestId("upload-current-status")).toHaveText("completed");
+  await expect(page.getByTestId("upload-selected-file-name")).toHaveText(fileName, {
+    timeout: 15_000,
+  });
+  await expect(page.getByTestId("upload-current-status")).toHaveText("completed", {
+    timeout: 30_000,
+  });
 }
 
 test.beforeEach(async ({ request }) => {

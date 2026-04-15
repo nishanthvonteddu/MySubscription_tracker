@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, FolderSearch, LoaderCircle } from "lucide-react";
 
 import { UploadDropzone } from "@/components/uploads/upload-dropzone";
@@ -57,16 +57,19 @@ export default function UploadsPage() {
 
   useEffect(() => {
     if (uploads.length === 0) {
-      setSelectedUploadId(null);
+      if (selectedUploadId !== null) {
+        setSelectedUploadId(null);
+      }
       return;
     }
 
-    if (selectedUploadId === null) {
-      startTransition(() => {
-        setSelectedUploadId(uploads[0]?.id ?? null);
-      });
+    const historyContainsSelection =
+      selectedUploadId !== null && uploads.some((upload) => upload.id === selectedUploadId);
+
+    if (selectedUploadId === null || (!historyContainsSelection && !selectedUploadStatusQuery.data)) {
+      setSelectedUploadId(uploads[0]?.id ?? null);
     }
-  }, [selectedUploadId, uploads]);
+  }, [selectedUploadId, selectedUploadStatusQuery.data, uploads]);
 
   useEffect(() => {
     setProcessingPhase(0);
@@ -141,9 +144,7 @@ export default function UploadsPage() {
           <UploadDropzone
             onUpload={async (file, onProgress) => {
               const created = await createUpload.mutateAsync({ file, onProgress });
-              startTransition(() => {
-                setSelectedUploadId(created.id);
-              });
+              setSelectedUploadId(created.id);
             }}
           />
           <UploadProcessingPanel upload={selectedUpload} visualStep={visualStep} />
@@ -174,16 +175,12 @@ export default function UploadsPage() {
             onDelete={(uploadId) => {
               void deleteUpload.mutateAsync(uploadId).then(() => {
                 if (selectedUploadId === uploadId) {
-                  startTransition(() => {
-                    setSelectedUploadId(null);
-                  });
+                  setSelectedUploadId(null);
                 }
               });
             }}
             onSelect={(uploadId) => {
-              startTransition(() => {
-                setSelectedUploadId(uploadId);
-              });
+              setSelectedUploadId(uploadId);
             }}
             selectedUploadId={selectedUpload?.id ?? null}
             uploads={uploads}
